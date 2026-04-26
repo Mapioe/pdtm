@@ -3,7 +3,7 @@ package version
 import (
 	"bytes"
 	"errors"
-	"os"
+	"io/fs"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -34,10 +34,10 @@ func tryVersionCommand(toolPath, versionCmd string) (string, error) {
 	cmd.Stderr = &outb
 
 	if err := cmd.Run(); err != nil {
-		if os.IsNotExist(err) {
-		return "", errors.New("not installed")
+		if errors.Is(err, fs.ErrNotExist) {
+			return "", errors.New("not installed")
 		}
-	return "", err
+		return "", err
 	}
 
 	output := outb.String()
