@@ -3,6 +3,7 @@ package version
 import (
 	"bytes"
 	"errors"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -13,19 +14,17 @@ import (
 
 var (
 	RegexVersionNumber = regexp.MustCompile(`(?m)[v\s](\d+\.\d+\.\d+)`)
-	versionCommands    = []string{"--version", "version"}
+	versionCmd         = "--version"
 )
 
 func ExtractInstalledVersion(tool types.Tool, basePath string) (string, error) {
 	toolPath := filepath.Join(basePath, tool.Name)
 
-	for _, versionCmd := range versionCommands {
-		if version, err := tryVersionCommand(toolPath, versionCmd); err == nil {
-			return version, nil
-		}
+	if version, err := tryVersionCommand(toolPath, versionCmd); err == nil {
+		return version, nil
+	} else {
+		return "", err
 	}
-
-	return "", errors.New("unable to extract installed version")
 }
 
 func tryVersionCommand(toolPath, versionCmd string) (string, error) {
@@ -35,7 +34,10 @@ func tryVersionCommand(toolPath, versionCmd string) (string, error) {
 	cmd.Stderr = &outb
 
 	if err := cmd.Run(); err != nil {
-		return "", err
+		if os.IsNotExist(err) {
+		return "", errors.New("not installed")
+		}
+	return "", err
 	}
 
 	output := outb.String()

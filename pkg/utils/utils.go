@@ -122,7 +122,7 @@ func InstalledVersion(tool types.Tool, basePath string, au *aurora.Aurora) strin
 		if !osAvailable {
 			msg = fmt.Sprintf("(%s)", au.Gray(10, "not supported").String())
 		} else {
-			msg = fmt.Sprintf("(%s)", au.BrightYellow("not installed").String())
+			msg = fmt.Sprintf("(%s)", au.BrightYellow(err).String())
 		}
 	}
 
