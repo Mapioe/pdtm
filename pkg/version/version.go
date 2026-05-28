@@ -19,10 +19,11 @@ var (
 
 func ExtractInstalledVersion(tool types.Tool, basePath string) (string, error) {
 	toolPath := filepath.Join(basePath, tool.Name)
+
 	version, err := tryVersionCommand(toolPath, versionCmd)
 	if err != nil {
 		return "", err
-	} 
+	}
 	return version, nil
 }
 
