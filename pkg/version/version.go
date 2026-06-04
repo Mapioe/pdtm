@@ -37,7 +37,7 @@ func tryVersionCommand(toolPath, versionCmd string) (string, error) {
 		if errors.Is(err, fs.ErrNotExist) {
 			return "", errors.New("not installed")
 		}
-		return "", err
+		return "", errors.New("unknown")
 	}
 
 	output := outb.String()
