@@ -14,17 +14,24 @@ import (
 
 var (
 	RegexVersionNumber = regexp.MustCompile(`(?m)[v\s](\d+\.\d+\.\d+)`)
-	versionCmd         = "--version"
+	versionCommands    = []string{"--version", "version"}
 )
 
 func ExtractInstalledVersion(tool types.Tool, basePath string) (string, error) {
 	toolPath := filepath.Join(basePath, tool.Name)
 
-	version, err := tryVersionCommand(toolPath, versionCmd)
-	if err != nil {
-		return "", err
+	var lastErr error
+
+	for _, versionCmd := range versionCommands {
+		version, err := tryVersionCommand(toolPath, versionCmd)
+		if err == nil {
+			return version, nil
+		}
+
+		lastErr = err
 	}
-	return version, nil
+
+	return "", lastErr
 }
 
 func tryVersionCommand(toolPath, versionCmd string) (string, error) {
