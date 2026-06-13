@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/logrusorgru/aurora/v4"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/pdtm/pkg/path"
 	"github.com/projectdiscovery/pdtm/pkg/types"
 	"github.com/projectdiscovery/pdtm/pkg/version"
@@ -118,11 +120,16 @@ func InstalledVersion(tool types.Tool, basePath string, au *aurora.Aurora) strin
 
 	installedVersion, err := version.ExtractInstalledVersion(tool, basePath)
 	if err != nil {
-		osAvailable := isOsAvailable(tool)
-		if !osAvailable {
+		switch {
+		case !isOsAvailable(tool):
 			msg = fmt.Sprintf("(%s)", au.Gray(10, "not supported").String())
-		} else {
+		case errors.Is(err, version.ErrNotInstalled):
 			msg = fmt.Sprintf("(%s)", au.BrightYellow("not installed").String())
+		default:
+			// Keep the listing readable: only surface a generic label and log
+			// the detailed reason (unsupported flag, unparseable output, ...).
+			gologger.Debug().Msgf("could not determine %s version: %s", tool.Name, err)
+			msg = fmt.Sprintf("(%s)", au.BrightYellow("unknown").String())
 		}
 	}
 
