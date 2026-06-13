@@ -52,7 +52,10 @@ func tryVersionCommand(toolPath, versionCmd string) (string, error) {
 	cmd.Stderr = &outb
 
 	if err := cmd.Run(); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
+		// A missing binary surfaces as fs.ErrNotExist on unix and as
+		// exec.ErrNotFound on windows (the .exe is not found on PATH), so both
+		// must be treated as "not installed".
+		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, exec.ErrNotFound) {
 			return "", ErrNotInstalled
 		}
 		return "", fmt.Errorf("%w: %q failed: %v", ErrVersionUnknown, versionCmd, err)
