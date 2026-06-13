@@ -3,6 +3,7 @@ package version
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os/exec"
 	"path/filepath"
@@ -15,19 +16,29 @@ import (
 var (
 	RegexVersionNumber = regexp.MustCompile(`(?m)[v\s](\d+\.\d+\.\d+)`)
 	versionCommands    = []string{"--version", "version"}
+
+	// ErrNotInstalled is returned when the tool binary is missing.
+	ErrNotInstalled = errors.New("not installed")
+	// ErrVersionUnknown is returned when the binary exists but its version
+	// could not be determined (unsupported flag, empty/unparseable output, ...).
+	// Callers should surface a generic label and may log the wrapped detail.
+	ErrVersionUnknown = errors.New("unknown")
 )
 
 func ExtractInstalledVersion(tool types.Tool, basePath string) (string, error) {
 	toolPath := filepath.Join(basePath, tool.Name)
 
 	var lastErr error
-
 	for _, versionCmd := range versionCommands {
-		version, err := tryVersionCommand(toolPath, versionCmd)
+		ver, err := tryVersionCommand(toolPath, versionCmd)
 		if err == nil {
-			return version, nil
+			return ver, nil
 		}
-
+		// A missing binary won't be resolved by trying another command, and
+		// bailing keeps the surfaced error independent of command ordering.
+		if errors.Is(err, ErrNotInstalled) {
+			return "", err
+		}
 		lastErr = err
 	}
 
@@ -42,23 +53,23 @@ func tryVersionCommand(toolPath, versionCmd string) (string, error) {
 
 	if err := cmd.Run(); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return "", errors.New("not installed")
+			return "", ErrNotInstalled
 		}
-		return "", errors.New("unknown")
+		return "", fmt.Errorf("%w: %q failed: %v", ErrVersionUnknown, versionCmd, err)
 	}
 
 	output := outb.String()
 	if output == "" {
-		return "", errors.New("empty output")
+		return "", fmt.Errorf("%w: %q produced no output", ErrVersionUnknown, versionCmd)
 	}
 
 	installedVersion := RegexVersionNumber.FindString(strings.ToLower(output))
 	if installedVersion == "" {
-		return "", errors.New("no version found in output")
+		return "", fmt.Errorf("%w: no version found in %q output", ErrVersionUnknown, versionCmd)
 	}
 
-	version := strings.TrimSpace(installedVersion)
-	version = strings.TrimPrefix(version, "v")
+	ver := strings.TrimSpace(installedVersion)
+	ver = strings.TrimPrefix(ver, "v")
 
-	return version, nil
+	return ver, nil
 }
